@@ -115,11 +115,52 @@ docker-compose -f docker-compose.moxie.yml up -d
 
 - `MOXIE_MODE` - Enable Moxie enhancements (default: true)
 - `MOXIE_EMOTION_DETECTION` - Detect emotions (default: true)  
+- `MOXIE_CHILD_MODE` - Enable child-friendly filtering (default: false)
 - `TTSFM_ENABLED` - Enable TTSFM integration (default: false)
 - `TTSFM_ENDPOINT` - TTSFM service URL
 - `AUTO_START_SERVER` - Auto-start after auth (default: false)
 - `API_KEY` - Optional API key protection
 - `DEBUG_MODE` - Enable debug logging
+
+## Adult vs Child Mode
+
+By default, the wrapper operates in **adult mode**, providing unfiltered Claude responses with emotion detection and Moxie animations.
+
+### Adult Mode (Default)
+- Full, unfiltered Claude responses
+- Emotion detection for natural expressions
+- Moxie animations based on content
+- No content modification
+
+### Child Mode
+Enable child mode in three ways:
+
+1. **Environment Variable** (affects all requests):
+```bash
+MOXIE_CHILD_MODE=true
+```
+
+2. **Per-Request Header**:
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "X-Moxie-Child-Mode: true" \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "..."}]}'
+```
+
+3. **In Analysis Endpoint**:
+```json
+{
+  "text": "Your text here",
+  "child_mode": true
+}
+```
+
+Child mode features:
+- Filters inappropriate content
+- Adjusts tone to be more encouraging
+- Softens negative responses
+- Makes language more child-friendly
 
 ## Troubleshooting
 

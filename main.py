@@ -49,6 +49,7 @@ VERBOSE = os.getenv('VERBOSE', 'false').lower() in ('true', '1', 'yes', 'on')
 # Moxie-specific configuration
 MOXIE_MODE = os.getenv('MOXIE_MODE', 'true').lower() in ('true', '1', 'yes', 'on')
 MOXIE_EMOTION_DETECTION = os.getenv('MOXIE_EMOTION_DETECTION', 'true').lower() in ('true', '1', 'yes', 'on')
+MOXIE_CHILD_MODE = os.getenv('MOXIE_CHILD_MODE', 'false').lower() in ('true', '1', 'yes', 'on')
 TTSFM_ENABLED = os.getenv('TTSFM_ENABLED', 'false').lower() in ('true', '1', 'yes', 'on')
 TTSFM_ENDPOINT = os.getenv('TTSFM_ENDPOINT', 'http://localhost:8001')
 
@@ -605,7 +606,9 @@ async def chat_completions(
             
             # Apply Moxie enhancements if enabled
             if MOXIE_MODE:
-                moxie_response = format_moxie_response(assistant_content, enable_ttsfm=TTSFM_ENABLED)
+                # Check if child mode is requested via header or use global setting
+                child_mode = request.headers.get('X-Moxie-Child-Mode', '').lower() in ('true', '1', 'yes') or MOXIE_CHILD_MODE
+                moxie_response = format_moxie_response(assistant_content, enable_ttsfm=TTSFM_ENABLED, child_mode=child_mode)
                 
                 # Use the filtered/enhanced text
                 enhanced_content = moxie_response.get("moxie_markup", assistant_content)
@@ -730,6 +733,7 @@ async def health_check():
         "service": "moxie-claude-wrapper",
         "moxie_mode": MOXIE_MODE,
         "emotion_detection": MOXIE_EMOTION_DETECTION,
+        "child_mode": MOXIE_CHILD_MODE,
         "ttsfm_enabled": TTSFM_ENABLED
     }
 
@@ -746,8 +750,11 @@ async def analyze_for_moxie(
     if not text:
         raise HTTPException(status_code=400, detail="Text field is required")
     
+    # Get child mode from request or use default
+    child_mode = request.get("child_mode", MOXIE_CHILD_MODE)
+    
     # Use Moxie response enhancer
-    enhancer = MoxieResponseEnhancer()
+    enhancer = MoxieResponseEnhancer(child_mode=child_mode)
     result = enhancer.enhance_response(text, include_emotion=TTSFM_ENABLED)
     
     return {

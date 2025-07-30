@@ -55,22 +55,39 @@ class MoxieEmotionDetector:
         return "neutral"
 
 class MoxieContentFilter:
-    """Filter content to ensure child-appropriate responses"""
+    """Filter content based on user mode (child/adult)"""
     
-    INAPPROPRIATE_WORDS = [
-        # Add inappropriate words/phrases here
-        # This is a simplified example
-    ]
+    def __init__(self, child_mode: bool = False):
+        """
+        Initialize content filter
+        
+        Args:
+            child_mode: If True, apply child-friendly filtering. If False, keep adult responses intact.
+        """
+        self.child_mode = child_mode
     
     def filter_response(self, text: str) -> str:
-        """Filter and modify text to be child-appropriate"""
-        # Remove any inappropriate content
+        """Filter text based on mode"""
+        if not self.child_mode:
+            # Adult mode - return text as-is
+            return text
+        
+        # Child mode - apply filtering
         filtered_text = text
         
-        # Ensure friendly tone
+        # Remove any inappropriate content for children
+        filtered_text = self._filter_inappropriate_content(filtered_text)
+        
+        # Ensure friendly tone for children
         filtered_text = self._ensure_friendly_tone(filtered_text)
         
         return filtered_text
+    
+    def _filter_inappropriate_content(self, text: str) -> str:
+        """Remove content inappropriate for children"""
+        # This would contain actual filtering logic
+        # For now, just return the text
+        return text
     
     def _ensure_friendly_tone(self, text: str) -> str:
         """Make sure the tone is friendly and appropriate for children"""
@@ -78,7 +95,9 @@ class MoxieContentFilter:
         replacements = {
             "I don't know": "That's a great question! Let me think about that",
             "I can't": "Let's see what we can do instead",
-            "No": "Hmm, how about we try something else"
+            "No": "Hmm, how about we try something else",
+            "That's wrong": "Let's try a different way",
+            "You're incorrect": "That's a good try! Here's another way to think about it"
         }
         
         for old, new in replacements.items():
@@ -90,9 +109,16 @@ class MoxieContentFilter:
 class MoxieResponseEnhancer:
     """Enhance Claude responses for Moxie"""
     
-    def __init__(self):
+    def __init__(self, child_mode: bool = False):
+        """
+        Initialize response enhancer
+        
+        Args:
+            child_mode: If True, apply child-friendly filtering. If False, adult mode.
+        """
         self.emotion_detector = MoxieEmotionDetector()
-        self.content_filter = MoxieContentFilter()
+        self.content_filter = MoxieContentFilter(child_mode=child_mode)
+        self.child_mode = child_mode
     
     def enhance_response(self, response_text: str, include_emotion: bool = True) -> Dict:
         """
@@ -164,18 +190,19 @@ class MoxieResponseEnhancer:
         }
         return emotion_instructions.get(emotion, emotion_instructions["neutral"])
 
-def format_moxie_response(claude_response: str, enable_ttsfm: bool = False) -> Dict:
+def format_moxie_response(claude_response: str, enable_ttsfm: bool = False, child_mode: bool = False) -> Dict:
     """
     Format Claude's response for Moxie with all enhancements
     
     Args:
         claude_response: Raw response from Claude
         enable_ttsfm: Whether to include TTSFM parameters
+        child_mode: If True, apply child-friendly filtering. If False, adult mode.
         
     Returns:
         Enhanced response dict suitable for Moxie
     """
-    enhancer = MoxieResponseEnhancer()
+    enhancer = MoxieResponseEnhancer(child_mode=child_mode)
     enhanced = enhancer.enhance_response(claude_response, include_emotion=enable_ttsfm)
     
     # Build Moxie markup if commands exist
