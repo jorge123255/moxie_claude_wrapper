@@ -38,6 +38,7 @@ from session_manager import session_manager
 from tool_handler import tool_handler
 from tools import tool_registry
 from moxie_integration import format_moxie_response, MoxieResponseEnhancer
+from user_recognition import MoxieSessionManager, UserType
 
 # Load environment variables
 load_dotenv()
@@ -63,6 +64,9 @@ logger = logging.getLogger(__name__)
 
 # Global variable to store runtime-generated API key
 runtime_api_key = None
+
+# Initialize Moxie session manager
+moxie_session_manager = MoxieSessionManager()
 
 def generate_secure_token(length: int = 32) -> str:
     """Generate a secure random token for API authentication."""
@@ -797,6 +801,69 @@ async def list_emotions():
                 "ttsfm_instruction": "Speak in a friendly, conversational tone"
             }
         }
+    }
+
+
+@app.post("/v1/moxie/identify")
+async def identify_user(
+    request: dict,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+):
+    """Identify Moxie user and get appropriate interaction settings"""
+    await verify_api_key(request, credentials)
+    
+    # Start a session with identification data
+    session_data = moxie_session_manager.start_session(request)
+    
+    return session_data
+
+
+@app.get("/v1/moxie/users")
+async def list_users(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+):
+    """List registered Moxie users"""
+    await verify_api_key(None, credentials)
+    
+    users = []
+    for user_id, profile in moxie_session_manager.user_recognition.profiles.items():
+        users.append({
+            "user_id": user_id,
+            "name": profile.name,
+            "type": profile.user_type.value,
+            "last_seen": profile.last_seen.isoformat()
+        })
+    
+    return {"users": users}
+
+
+@app.post("/v1/moxie/users")
+async def create_user(
+    request: dict,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+):
+    """Create a new Moxie user profile"""
+    await verify_api_key(request, credentials)
+    
+    name = request.get("name")
+    user_type = request.get("type", "adult")
+    
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    
+    # Create profile
+    profile = moxie_session_manager.user_recognition.create_profile(
+        name=name,
+        user_type=UserType(user_type),
+        voice_profile=request.get("voice_profile"),
+        face_id=request.get("face_id")
+    )
+    
+    return {
+        "user_id": profile.user_id,
+        "name": profile.name,
+        "type": profile.user_type.value,
+        "message": f"User profile created for {name}"
     }
 
 

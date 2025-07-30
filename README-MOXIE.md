@@ -162,6 +162,64 @@ Child mode features:
 - Softens negative responses
 - Makes language more child-friendly
 
+## User Recognition Options
+
+The wrapper includes several ways for Moxie to identify who's using it:
+
+### 1. Voice-Based Recognition (Simplest)
+Moxie can detect child vs adult based on voice pitch:
+```python
+# Automatic detection based on voice characteristics
+# Children typically have higher pitch (>200Hz)
+# Adults typically have lower pitch (<200Hz)
+```
+
+### 2. Code Word System (Most Practical)
+Each family member has a secret phrase:
+```
+Adult: "Hey Moxie, red dragon"
+Child: "Hey Moxie, blue unicorn"
+```
+
+### 3. Face Recognition (If Moxie has camera)
+Use Moxie's camera to identify registered users
+
+### 4. Time-Based Rules
+```python
+# School hours = child mode
+# Evening = check who's talking
+# Late night = adult mode
+```
+
+### 5. Manual Selection
+Physical button or app to switch modes:
+- Press once = Child mode
+- Press twice = Adult mode
+- Long press = Ask who's there
+
+### Example Integration with OpenMoxie
+
+```python
+# In OpenMoxie, detect user and set mode
+def on_moxie_interaction_start(voice_data):
+    # Identify user
+    user_session = moxie_session.start_session({
+        'voice_features': {'pitch': voice_data.pitch}
+    })
+    
+    # Set headers based on user
+    headers = {
+        'X-Moxie-Child-Mode': 'true' if user_session['settings']['child_mode'] else 'false'
+    }
+    
+    # Make request to Claude wrapper with appropriate mode
+    response = requests.post(
+        "http://moxie-claude:8000/v1/chat/completions",
+        headers=headers,
+        json={"messages": messages}
+    )
+```
+
 ## Troubleshooting
 
 ### Authentication Issues
