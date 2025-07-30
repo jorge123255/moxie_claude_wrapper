@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  moxie-claude:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ubuntu-desktop
+    image: jorge123255/moxie-claude-wrapper:latest
+    container_name: moxie-claude
+    environment:
+      # Display settings for VNC
+      - DISPLAY_WIDTH=1024
+      - DISPLAY_HEIGHT=768
+      - VNC_PASSWORD=moxie123
+      
+      # Moxie configuration
+      - MOXIE_MODE=true
+      - MOXIE_EMOTION_DETECTION=true
+      - TTSFM_ENABLED=true
+      - TTSFM_ENDPOINT=http://ttsfm:8001
+      
+      # API security (optional)
+      - API_KEY=${API_KEY:-}
+      
+      # Debug mode
+      - DEBUG_MODE=${DEBUG_MODE:-false}
+      
+      # Auto-start after auth
+      - AUTO_START_SERVER=${AUTO_START_SERVER:-false}
+    ports:
+      - "8000:8000"  # API endpoint
+      - "5900:5900"  # VNC access
+      - "6080:6080"  # noVNC web access
+    volumes:
+      - ./claude_sessions:/app/sessions
+      - claude-auth:/home/claude/.config/claude
+    depends_on:
+      - ttsfm
+    networks:
+      - moxie-net
+    restart: unless-stopped
+
+  ttsfm:
+    image: jorge123255/ttsfm:latest
+    container_name: moxie-ttsfm
+    environment:
+      - PORT=8001
+    expose:
+      - "8001"
+    volumes:
+      - ttsfm-cache:/app/cache
+    networks:
+      - moxie-net
+    restart: unless-stopped
+
+networks:
+  moxie-net:
+    driver: bridge
+
+volumes:
+  ttsfm-cache:
+    driver: local
+  claude-auth:
+    driver: local
